@@ -43,7 +43,7 @@ print ssc.abort(sid)
 #generalize client instance:
 ssc = ScanServerClient(host='localhost',port=4810)
 
-#C Command Sequence:
+#Create Command Sequence:
 cmds1 = CommandSequence(
    CommentCommand(comment='haha'),
    CommentCommand('hehe'),
