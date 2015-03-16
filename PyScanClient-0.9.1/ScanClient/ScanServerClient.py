@@ -6,6 +6,16 @@ Created on 30 12, 2014
 '''
 
 import requests
+from ScanClient.CommandSequence import CommandSequence
+from ScanClient.CommentCommand import CommentCommand
+from ScanClient.ConfigLogCommand import ConfigLogCommand 
+from ScanClient.DelayCommand import DelayCommand
+from ScanClient.IncludeCommand import IncludeCommand
+from ScanClient.LogCommand import LogCommand
+from ScanClient.LoopCommand import LoopCommand
+from ScanClient.ScriptCommand import ScriptCommand
+from ScanClient.SetCommand import SetCommand
+from ScanClient.WaitCommand import WaitCommand
 
 class ScanServerClient(object):
     '''
@@ -20,7 +30,10 @@ class ScanServerClient(object):
     __scansResource = "/scans"
     __scansCompletedResource = "/completed"
     __scanResource = "/scan"
-     
+    #__curScanXML = "No contents."
+    #__curScanName = "No name."
+    SCN = '<commands></commands>'
+    
     def __new__(cls, host = 'localhost',port=4810):
         '''   
         Singleton method to make sure there is only one instance alive.
@@ -41,9 +54,9 @@ class ScanServerClient(object):
         
         
         
-    def submitScan(self,scanXML=None,scanName='UnNamed'):
+    def submitScanXML(self,scanXML=None,scanName='UnNamed'):
         '''
-        Create and submit a new scan.
+        Create and submit a new scan from raw XML-form.
         
         Using   POST {BaseURL}/scan/{scanName}
         Return  <id>{scanId}</id>
@@ -66,11 +79,50 @@ class ScanServerClient(object):
         except:
             raise Exception, 'Failed to submit scan.'
         
+        self.__curScanXML = scanXML
+        self.__curScanName = scanName
         if r.status_code == 200:
             return r.text
         else:
             return None
+    
+    def submitScan(self,cmdSeq=None,scanName='UnNamed'):
+        '''
+        Create and submit a new scan from Command Sequence.
+        
+        Using   POST {BaseURL}/scan/{scanName}
+        Return  <id>{scanId}</id>
+        
+        :param cmdSeq: The Command Sequence of a new scan
+        :param scanName: The name needed to give the new scan
+        
+        Usage::
 
+        >>> import ScanServerClient
+        >>> ssc=ScanServerClient('localhost',4810)
+        >>> cmds1 = CommandSequence(
+                       CommentCommand(comment='haha'),
+                       CommentCommand('hehe'),
+                       ConfigLogCommand(automatic=True),
+                       DelayCommand(seconds=2.0),
+                       IncludeCommand(scanFile='1.scn',macros='macro=value'),
+                       LogCommand('shutter','xpos','ypos'),
+                       LoopCommand(device='xpos',start=0.0,end=10.0,step=1.0,completion=True,wait=True,
+                                   body=[CommentCommand(comment='haha'),
+                                         ConfigLogCommand(automatic=True)
+                                         ]),
+                       ScriptCommand('submit.py',1,'abc',0.05),
+                       SetCommand(device='shutter',value=0.1,completion=True,wait=False,tolerance=0.1,timeOut=0.1),
+                       WaitCommand(device='shutter',desiredValue=10.0,comparison='=',tolerance=0.1,timeout=5.0)
+                    )
+        >>> scanId = ssc.submitScan(scanXML='<commands><comment><address>0</address><text>Successfully adding a new scan!</text></comment></commands>',scanName='1stScan')
+        '''
+        
+        if cmdSeq!=None:
+            self.submitScanXML(cmdSeq.genSCN(),scanName)
+        else:
+            print 'No scan defined!'
+    
     def simulateScan(self,scanXML=None):
         '''
         Simulate a scan.
@@ -325,11 +377,43 @@ class ScanServerClient(object):
             raise Exception, 'Failed to resume scan '+str(scanID)
         return r.status_code
     
+    #Guobao's requirement:
+    '''
+    def resubmit(self):
+        self.submitScan(self.__curScanXML, self.__curScanName)
+    '''
+     
+
+        
 '''
 ssc=ScanServerClient(host='localhost',port=4810)
 for i in range(278,283):
     ssc.abort(i)
 else:
     print 'All scans aborted.'
-    '''
+'''
 
+'''
+ssc = ScanServerClient(host='localhost',port=4810)
+cmds1 = CommandSequence(
+   CommentCommand(comment='haha'),
+   CommentCommand('hehe'),
+   ConfigLogCommand(automatic=True),
+   DelayCommand(seconds=2.0),
+   IncludeCommand(scanFile='1.scn',macros='macro=value'),
+   LogCommand('shutter','xpos','ypos'),
+   LoopCommand(device='xpos',start=0.0,end=10.0,step=1.0,completion=True,wait=True,
+               body=[CommentCommand(comment='haha'),
+                     ConfigLogCommand(automatic=True)
+                     ]),
+   ScriptCommand('submit.py',1,'abc',0.05),
+   SetCommand(device='shutter',value=0.1,completion=True,wait=False,tolerance=0.1,timeOut=0.1),
+   WaitCommand(device='shutter',desiredValue=10.0,comparison='=',tolerance=0.1,timeout=5.0)
+)
+
+cc=CommentCommand('hehe')
+print cc.toCmdString()
+print cmds1.toSeqString()
+print cmds1.genSCN()
+ssc.submitScanXML(cmds1.genSCN())
+'''
