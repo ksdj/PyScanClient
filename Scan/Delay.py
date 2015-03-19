@@ -3,7 +3,7 @@ Created on Mar 8,2015
 
 @author: qiuyx
 '''
-from Scan import Command
+from Scan.Command import Command
 
 class Delay(Command):
     '''
@@ -19,6 +19,9 @@ class Delay(Command):
     
     def genXML(self):
         return '<delay>'+'<seconds>'+str(self.seconds)+'</seconds>'+'</delay>'
-        
+    
+    def __str__(self):
+        return 'DelayCommand(seconds='+str(self.seconds)+')'
+    
     def toCmdString(self):
         return 'DelayCommand(seconds='+str(self.seconds)+')'

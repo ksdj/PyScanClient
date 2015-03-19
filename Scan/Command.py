@@ -1,6 +1,5 @@
 '''
 Created on Mar 8,2015
-
 @author: qiuyx
 '''
 from abc import abstractmethod
@@ -21,10 +20,5 @@ class Command(object):
         pass
     
     @abstractmethod
-    def generalize(self):
-        pass
-    
-    @abstractmethod
     def toCmdString(self):
         pass
-    

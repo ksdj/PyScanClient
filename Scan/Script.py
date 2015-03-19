@@ -3,7 +3,7 @@ Created on Mar 8,2015
 
 @author: qiuyx
 '''
-from Scan import Command
+from Scan.Command import Command
 
 class Script(Command):
     '''
@@ -30,6 +30,17 @@ class Script(Command):
         else:
             result+='<arguments/>'
         result+='</script>'
+        return result
+    
+    def __str__(self):
+        result= 'Script( Path='+self.path
+        if len(self.args)!=0:
+            result+=', '
+            for i in range(0,len(self.args)):
+                result+='Argument='+str(self.args[i])
+                if i!=len(self.args):
+                    result+=', '
+        result+=')'
         return result
         
     def toCmdString(self):

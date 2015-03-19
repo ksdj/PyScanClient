@@ -3,7 +3,7 @@ Created on Mar 8,2015
 
 @author: qiuyx
 '''
-from Scan import Command
+from Scan.Command import Command
 
 class Set(Command):
     '''
@@ -39,7 +39,19 @@ class Set(Command):
         result+='</set>'
         
         return result
-        
+    
+    def __str__(self):
+        result= 'Set( device='+self.device
+        result+= ', value='+str(self.value)
+        if self.completion==True:
+            result+=', completion=true'
+        if self.wait==False:
+            result+=', wait=false'
+        if self.timeOut!=0.0:
+            result+=', timeOut='+str(self.timeOut)
+        result+=')'
+        return result
+    
     def toCmdString(self):
         result= 'Set(device='+self.device
         result+= ',value='+str(self.value)

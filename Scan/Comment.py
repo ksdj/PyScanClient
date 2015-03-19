@@ -3,7 +3,7 @@ Created on Mar 8,2015
 
 @author: qiuyx
 '''
-from Scan import Command
+from Scan.Command import Command
 
 class Comment(Command):
     '''
@@ -19,8 +19,14 @@ class Comment(Command):
     
     def genXML(self):
         return '<comment>'+'<text>'+self.comment+'</text>'+'</comment>'
-        
+
+    def __repr__(self):
+        return 'Comment(Comment='+self.comment+')'
+    
     def toCmdString(self):
+        '''
+        Give a printing of this Command. 
+        '''
         return 'Comment(Comment='+self.comment+')'
     
     

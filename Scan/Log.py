@@ -3,7 +3,7 @@ Created on Mar 8,2015
 
 @author: qiuyx
 '''
-from Scan import Command
+from Scan.Command import Command
 
 class Log(Command):
     '''
@@ -30,12 +30,21 @@ class Log(Command):
             result +='</devices>'    
         result += '</log>'
         return result
-        
+    
+    def __str__(self):
+        result = 'Log( '
+        for i in range(0,len(self.devices)):
+            result +='device='+self.devices[i]
+            if i!=len(self.devices)-1:
+                result+=', '
+        result += ')'
+        return result
+    
     def toCmdString(self):
         result = 'Log('
         for i in range(0,len(self.devices)):
             result +='device='+self.devices[i]
             if i!=len(self.devices)-1:
-                result+=','
+                result+=', '
         result += ')'
         return result

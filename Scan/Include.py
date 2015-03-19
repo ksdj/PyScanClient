@@ -3,7 +3,7 @@ Created on Mar 8,2015
 
 @author: qiuyx
 '''
-from Scan import Command
+from Scan.Command import Command
 
 class Include(Command):
     '''
@@ -21,5 +21,8 @@ class Include(Command):
     def genXML(self):
         return '<include>'+'<scan_file>'+self.scanFile+'</scan_file>'+'<macros>'+self.macros+'</macros></include>'
         
+    def __str__(self):
+        return 'InclueCommand(scan_file='+self.scanFile+', macros='+self.macros+')'
+    
     def toCmdString(self):
-        return 'InclueCommand(scan_file='+self.scanFile+',macros='+self.macros+')'
+        return 'InclueCommand(scan_file='+self.scanFile+', macros='+self.macros+')'

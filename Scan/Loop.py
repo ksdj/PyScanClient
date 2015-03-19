@@ -3,9 +3,9 @@ Created on Mar 8,2015
 
 @author: qiuyx
 '''
-from ScanClient.Command import Command
+from Scan.Command import Command
 
-class LoopCommand(Command):
+class Loop(Command):
     '''
     classdocs
     '''
@@ -46,9 +46,27 @@ class LoopCommand(Command):
             result+='</body>'
         result+='</loop>'
         return result
+    
+    def __str__(self):
+        result='Loop( '
+        result+= 'device='+self.device+', '
+        result+= 'start='+str(self.start)+', '
+        result+= 'end='+str(self.end)+', '
+        result+= 'step='+str(self.step)+', '
+        result+= 'completion'+str(self.completion)+', '
+        result+= 'wait'+str(self.wait)+', '
+        result+= 'tolerance'+str(self.tolerance)+', '
+        if len(self.body)!=0:
+            result+= '\n[\n'
+            for command in self.body:
+                result+=command.toCmdString()+',\n'
+            result+= ']\n'
+        result+= 'timeout'+str(self.timeOut)
+        result+=')'
+        return result
         
     def toCmdString(self):
-        result='LoopCommand('
+        result='Loop('
         result+= 'device='+self.device+','
         result+= 'start='+str(self.start)+','
         result+= 'end='+str(self.end)+','

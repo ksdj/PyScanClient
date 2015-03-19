@@ -9,7 +9,7 @@ setup(name='PyScanClient',
       description='Python Scna Server Client Lib',
       author='Qiu Yongxiang',
       author_email='qiuyongxiang05@gmail.com',
-      url = 'http://github.com/pySC',
+      url = 'https://github.com/ksdj/PyScanClient.git',
       packages= ['Scan','Test','example'],
       classifiers=[
     'Development Status :: 3 - Alpha',

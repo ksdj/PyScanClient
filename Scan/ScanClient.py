@@ -1,25 +1,17 @@
 '''
 Copyright (c) 2014 
 All rights reserved. Use is subject to license terms and conditions.
-Created on 30 12, 2014
+Created on Dec 30, 2014
+Updated on Mar 17,2015
 @author: Yongxiang Qiu
 '''
 
 import requests
-from ScanClient.CommandSequence import CommandSequence
-from ScanClient.CommentCommand import CommentCommand
-from ScanClient.ConfigLogCommand import ConfigLogCommand 
-from ScanClient.DelayCommand import DelayCommand
-from ScanClient.IncludeCommand import IncludeCommand
-from ScanClient.LogCommand import LogCommand
-from ScanClient.LoopCommand import LoopCommand
-from ScanClient.ScriptCommand import ScriptCommand
-from ScanClient.SetCommand import SetCommand
-from ScanClient.WaitCommand import WaitCommand
+from Scan.CmdSequence import CmdSequence
 
-class ScanServerClient(object):
+class ScanClient(object):
     '''
-    The ScanServerClient provides interfaces to interact with java-ScanServer,
+    The Scan provides interfaces to interact with java-ScanServer,
     which includes methods such as Start,Pause,GetScanInfo... to manipulate 
     the behaviors and retrieve data from Scan.
     '''
@@ -30,9 +22,6 @@ class ScanServerClient(object):
     __scansResource = "/scans"
     __scansCompletedResource = "/completed"
     __scanResource = "/scan"
-    #__curScanXML = "No contents."
-    #__curScanName = "No name."
-    SCN = '<commands></commands>'
     
     def __new__(cls, host = 'localhost',port=4810):
         '''   
@@ -40,7 +29,7 @@ class ScanServerClient(object):
         '''
         
         if not hasattr(cls, 'instance'):
-            cls.instance = super(ScanServerClient,cls).__new__(cls)
+            cls.instance = super(ScanClient,cls).__new__(cls)
         return cls.instance
     
     def __init__(self, host = 'localhost',port=4810):
@@ -52,9 +41,31 @@ class ScanServerClient(object):
         except:
             raise Exception, 'Failed to create client to ' + self.__baseURL
         
+    def submit(self,cmds=None,scanName='UnNamed'):
+        '''
+        :param cmds: Support the following 3 types:
+                    1.The .scn XML text
+                    2.A CommandSequnce instance
+                    3.A Python List
+        '''
+        try:
+            if isinstance(cmds,str):
+                self.__submitScanXML(cmds,scanName)
+            
+            elif isinstance(cmds,CmdSequence):
+                self.__submitScanSequence(cmds, scanName)
+            
+            elif isinstance(cmds,list):
+                self.__submitScanList(cmds,scanName)
+        except:
+            raise Exception, '''Invalid Commands input, must be one of these 3 types:
+                             1.The .scn XML text. 
+                             2.A CommandSequnce instance
+                             3.An Array of commands
+                             '''
         
         
-    def submitScanXML(self,scanXML=None,scanName='UnNamed'):
+    def __submitScanXML(self,scanXML=None,scanName='UnNamed'):
         '''
         Create and submit a new scan from raw XML-form.
         
@@ -66,13 +77,11 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> scanId = ssc.submitScan(scanXML='<commands><comment><address>0</address><text>Successfully adding a new scan!</text></comment></commands>',scanName='1stScan')
+        >>> import Scan
+        >>> ssc=ScanClient('localhost',4810)
+        >>> scanId = ssc.__submitScanSequence(scanXML='<commands><comment><address>0</address><text>Successfully adding a new scan!</text></comment></commands>',scanName='1stScan')
         '''
-        
-        if scanXML == None:
-            scanXML = raw_input('Please enter your scanXML:') 
+
         try:
             url = self.__baseURL+self.__scanResource+'/'+scanName
             r = requests.post(url = url,data = scanXML,headers = {'content-type': 'text/xml'}) 
@@ -84,9 +93,43 @@ class ScanServerClient(object):
         if r.status_code == 200:
             return r.text
         else:
-            return None
+            return r.status_code
     
-    def submitScan(self,cmdSeq=None,scanName='UnNamed'):
+    def __submitScanList(self,cmdList=None,scanName='UnNamed'):
+        '''
+        Create and submit a new scan from Command Sequence.
+        
+        Using   POST {BaseURL}/scan/{scanName}
+        Return  <id>{scanId}</id>
+        
+        :param cmdList: The Command Sequence of a new scan
+        :param scanName: The name needed to give the new scan
+        
+        Usage::
+
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> cmds1 = [
+                       Comment(comment='haha'),
+                       Comment('hehe'),
+                       Command(automatic=True),
+                       DelayCommand(seconds=2.0),
+                       Include(scanFile='1.scn',macros='macro=value'),
+                       Log('shutter','xpos','ypos'),
+                       Loop(device='xpos',start=0.0,end=10.0,step=1.0,completion=True,wait=True,
+                                   body=[Comment(comment='haha'),
+                                         Command(automatic=True)
+                                         ]),
+                       Script('submit.py',1,'abc',0.05),
+                       Set(device='shutter',value=0.1,completion=True,wait=False,tolerance=0.1,timeOut=0.1),
+                       Wait(device='shutter',desiredValue=10.0,comparison='=',tolerance=0.1,timeout=5.0)
+                    ]
+        >>> scanId = ssc.__submitScanSequence(scanXML='<commands><comment><address>0</address><text>Successfully adding a new scan!</text></comment></commands>',scanName='1stScan')
+        '''
+        
+        return self.__submitScanXML(self.genSCN4List(cmdList),scanName)
+     
+    def __submitScanSequence(self,cmdSeq=None,scanName='UnNamed'):
         '''
         Create and submit a new scan from Command Sequence.
         
@@ -98,32 +141,40 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> cmds1 = CommandSequence(
-                       CommentCommand(comment='haha'),
-                       CommentCommand('hehe'),
-                       ConfigLogCommand(automatic=True),
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> cmds1 = CmdSeq(
+                       Comment(comment='haha'),
+                       Comment('hehe'),
+                       Command(automatic=True),
                        DelayCommand(seconds=2.0),
-                       IncludeCommand(scanFile='1.scn',macros='macro=value'),
-                       LogCommand('shutter','xpos','ypos'),
-                       LoopCommand(device='xpos',start=0.0,end=10.0,step=1.0,completion=True,wait=True,
-                                   body=[CommentCommand(comment='haha'),
-                                         ConfigLogCommand(automatic=True)
+                       Include(scanFile='1.scn',macros='macro=value'),
+                       Log('shutter','xpos','ypos'),
+                       Loop(device='xpos',start=0.0,end=10.0,step=1.0,completion=True,wait=True,
+                                   body=[Comment(comment='haha'),
+                                         Command(automatic=True)
                                          ]),
-                       ScriptCommand('submit.py',1,'abc',0.05),
-                       SetCommand(device='shutter',value=0.1,completion=True,wait=False,tolerance=0.1,timeOut=0.1),
-                       WaitCommand(device='shutter',desiredValue=10.0,comparison='=',tolerance=0.1,timeout=5.0)
+                       Script('submit.py',1,'abc',0.05),
+                       Set(device='shutter',value=0.1,completion=True,wait=False,tolerance=0.1,timeOut=0.1),
+                       Wait(device='shutter',desiredValue=10.0,comparison='=',tolerance=0.1,timeout=5.0)
                     )
-        >>> scanId = ssc.submitScan(scanXML='<commands><comment><address>0</address><text>Successfully adding a new scan!</text></comment></commands>',scanName='1stScan')
+        >>> scanId = ssc.__submitScanSequence(scanXML='<commands><comment><address>0</address><text>Successfully adding a new scan!</text></comment></commands>',scanName='1stScan')
         '''
         
         if cmdSeq!=None:
-            self.submitScanXML(cmdSeq.genSCN(),scanName)
+            return self.__submitScanXML(cmdSeq.genSCN(),scanName)
         else:
             print 'No scan defined!'
+            
+    def genSCN4List(self,cmdList=None):
+        result='<commands>'
+        for c in cmdList:
+            result+=c.genXML()
+        
+        result+='</commands>'
+        return result
     
-    def simulateScan(self,scanXML=None):
+    def simulate(self,scanXML=None):
         '''
         Simulate a scan.
         
@@ -134,20 +185,19 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> sid = ssc.simulateScan(scanXML='<commands><comment><address>0</address><text>Successfully simulating a new scan!</text></comment></commands>')
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> sid = ssc.simulate(scanXML='<commands><comment><address>0</address><text>Successfully simulating a new scan!</text></comment></commands>')
       
         '''
-        if scanXML == None:
-            scanXML = raw_input('Please enter your scanXML:') 
+        
         r = requests.post(url = self.__baseURL+self.__simulateResource,data = scanXML,headers = {'content-type': 'text/xml'}) 
         if r.status_code == 200:
             return r.text
         else:
             return None
         
-    def deleteScan(self,scanID = None):
+    def delete(self,scanID = None):
         '''
         Remove a unique scans.
         
@@ -158,16 +208,12 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> st = ssc.deleteScan(153)
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> st = ssc.delete(153)
       
         Return the status code. 0 if Error parameters.
         '''
-        if scanID == None:
-            scanID = raw_input('Please enter your scan ID:')
-        elif not isinstance(scanID, int):
-            scanID = input('Scan ID must be an integer.Please reenter:')
         
         try:
             r=requests.delete(url = self.__baseURL+self.__scanResource+'/'+str(scanID))
@@ -176,7 +222,7 @@ class ScanServerClient(object):
             raise Exception, 'Failed to deleted scan '+str(scanID)
         return r.status_code
 
-    def removeCompeletedScan(self):
+    def clear(self):
         '''
         Remove completed scan.
         
@@ -185,9 +231,9 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> st = ssc.removeCompeletedScan()
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> st = ssc.clear()
         '''
         
         try:
@@ -198,7 +244,7 @@ class ScanServerClient(object):
         return r.status_code
     
     #############Detailed Design Needed#############
-    def getScanInfo(self,scanID = None,infoType = None):
+    def scanInfo(self,scanID = None,infoType = None):
         '''
         Get all information of one scan.
         Using  GET {BaseURL}/scan/{scanID}                - get scan info
@@ -206,25 +252,17 @@ class ScanServerClient(object):
                GET {BaseURL}/scan/{scanID}/data           - get scan data
                GET {BaseURL}/scan/{scanID}/last_serial    - get scan data's last serial
                GET {BaseURL}/scan/{scanId}/devices        - get devices used by a scan
-        Return all scan info in XML form.
+        Return all info of one scan in XML form.
         
         :param scanID: The id of scan you want to get.Must be an integer.
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> st = ssc.getScanInfo(153,scan)
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> st = ssc.scanInfo(153,scan)
         '''
-        
-        if scanID == None:
-            scanID = raw_input('Please enter your scan ID:')
-        elif not isinstance(scanID, int):
-            scanID = input('Scan ID must be an integer.Please reenter:')
-            
-        if infoType == None:
-            infoType = raw_input('Select the type of the info you want below-(scan, data, commands, last_serial, devices):')
-        
+                    
         try:
             if infoType == 'scan':
                 url = self.__baseURL+self.__scanResource+'/'+str(scanID)
@@ -235,7 +273,7 @@ class ScanServerClient(object):
             raise Exception, 'Failed to get info from scan '+str(scanID)
         return r.text
                 
-    def getScanServerInfo(self):
+    def serverInfo(self):
         '''
         Get information of current server
         Using GET {BaseURL}/server/info
@@ -243,9 +281,9 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> st = ssc.getScanServerInfo()
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> st = ssc.serverInfo()
         '''
         
         try:
@@ -254,7 +292,7 @@ class ScanServerClient(object):
             raise Exception, 'Failed to get info from scan server.'
         return r.text
         
-    def getAllScanInfo(self):
+    def scanList(self):
         '''
         Get information of all scans 
         Using GET {BaseURL}/scans - get all scan infos
@@ -262,9 +300,9 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
-        >>> st = ssc.getAllScanInfo()
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
+        >>> st = ssc.scanList()
         '''
         try:
             r = requests.get(url = self.__baseURL+self.__scansResource)
@@ -281,15 +319,10 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
         >>> st = ssc.pause(153)
         '''
-
-        if scanID == None:
-            scanID = input('Enter id of the scan you want to pause:')
-        elif not isinstance(scanID, int):
-            scanID = input('Scan ID must be an integer.Please reenter:')
         
         try:
             r = requests.put(url=self.__baseURL+self.__scanResource+'/'+str(scanID)+'/pause')
@@ -306,16 +339,11 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
         >>> st = ssc.abort(153)
         '''
-        
-        if scanID == None:
-            scanID = input('Enter id of the scan you want to abort:')
-        elif not isinstance(scanID, int):
-            scanID = input('Scan ID must be an integer.Please reenter:')
-    
+
         try:
             r = requests.put(url=self.__baseURL+self.__scanResource+'/'+str(scanID)+'/abort')
         except:
@@ -331,15 +359,10 @@ class ScanServerClient(object):
         
         Usage::
 
-        >>> import ScanServerClient
-        >>> ssc=ScanServerClient('localhost',4810)
+        >>> import Scan
+        >>> ssc=Scan('localhost',4810)
         >>> st = ssc.abort(153)
         '''
-        
-        if scanID == None:
-            scanID = input('Enter id of the scan you want to resume:')
-        elif not isinstance(scanID, int):
-            scanID = input('Scan ID must be an integer.Please reenter:')
         
         try:
             r = requests.put(url=self.__baseURL+self.__scanResource+'/'+str(scanID)+'/resume')
@@ -347,7 +370,7 @@ class ScanServerClient(object):
             raise Exception, 'Failed to resume scan ',scanID
         return r.status_code        
         
-    def updateCommand(self,scanID=None,scanXML=None):
+    def update(self,scanID=None,scanXML=None):
         '''
         Update property of a scan command.
         
@@ -363,13 +386,6 @@ class ScanServerClient(object):
             </patch>
           
         '''
-        if scanXML == None:
-            scanXML = raw_input('Please enter your scanXML:') 
-        
-        if scanID == None:
-            scanID = input('Enter id of the scan you want to update:')
-        elif not isinstance(scanID, int):
-            scanID = input('Scan ID must be an integer.Please reenter:')
         
         try:
             r = requests.put(url=self.__baseURL+self.__scanResource+'/'+str(scanID)+'/patch',data=scanXML,headers= {'content-type': 'text/xml'})
@@ -377,43 +393,3 @@ class ScanServerClient(object):
             raise Exception, 'Failed to resume scan '+str(scanID)
         return r.status_code
     
-    #Guobao's requirement:
-    '''
-    def resubmit(self):
-        self.submitScan(self.__curScanXML, self.__curScanName)
-    '''
-     
-
-        
-'''
-ssc=ScanServerClient(host='localhost',port=4810)
-for i in range(278,283):
-    ssc.abort(i)
-else:
-    print 'All scans aborted.'
-'''
-
-'''
-ssc = ScanServerClient(host='localhost',port=4810)
-cmds1 = CommandSequence(
-   CommentCommand(comment='haha'),
-   CommentCommand('hehe'),
-   ConfigLogCommand(automatic=True),
-   DelayCommand(seconds=2.0),
-   IncludeCommand(scanFile='1.scn',macros='macro=value'),
-   LogCommand('shutter','xpos','ypos'),
-   LoopCommand(device='xpos',start=0.0,end=10.0,step=1.0,completion=True,wait=True,
-               body=[CommentCommand(comment='haha'),
-                     ConfigLogCommand(automatic=True)
-                     ]),
-   ScriptCommand('submit.py',1,'abc',0.05),
-   SetCommand(device='shutter',value=0.1,completion=True,wait=False,tolerance=0.1,timeOut=0.1),
-   WaitCommand(device='shutter',desiredValue=10.0,comparison='=',tolerance=0.1,timeout=5.0)
-)
-
-cc=CommentCommand('hehe')
-print cc.toCmdString()
-print cmds1.toSeqString()
-print cmds1.genSCN()
-ssc.submitScanXML(cmds1.genSCN())
-'''
