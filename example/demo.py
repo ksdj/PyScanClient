@@ -17,7 +17,7 @@ from Scan.Loop import Loop
 from Scan.Set import Set
 from Scan.ConfigLog import ConfigLog
 '''
-from Scan import *
+from scan import *
 
 #get the client instance
 sc=ScanClient('localhost','4810')
